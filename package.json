@@ -1,0 +1,23 @@
+{
+  "name": "client-replier",
+  "version": "1.0.0",
+  "description": "WebSocket client that connects to SQL Server and handles query requests",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "mssql": "^11.0.1"
+  },
+  "keywords": [
+    "websocket",
+    "sql-server",
+    "client",
+    "node"
+  ],
+  "author": "",
+  "license": "ISC"
+}
