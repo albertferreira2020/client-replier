@@ -55,7 +55,7 @@ const connectWebSocket = () => {
     state.ws = new WebSocket(process.env.WEBSOCKET_URL);
     state.ws.on('open', () => {
         console.log('WebSocket conectado');
-        state.ws.send(JSON.stringify({ type: 'auth', apiKey: process.env.API_KEY }));
+        state.ws.send(JSON.stringify({ type: 'auth', apiKey: process.env.API_KEY, instance: 'UnimedGM' }));
     });
     state.ws.on('message', handleMessage);
     state.ws.on('close', () => {
