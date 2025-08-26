@@ -12,11 +12,16 @@ const sqlConfig = {
     }
 };
 
-const state = { ws: null, pool: null };
+const state = { ws: null, pool: null, reconnecting: false };
 
 const executeQuery = async (query) => {
-    const request = state.pool.request();
-    return await request.query(query);
+    try {
+        const request = state.pool.request();
+        return await request.query(query);
+    } catch (error) {
+        if (!state.reconnecting) reconnectSQL();
+        throw error;
+    }
 };
 
 const handleQuery = async (message) => {
@@ -46,22 +51,44 @@ const handleMessage = (data) => {
     else if (message.type === 'query_request') handleQuery(message);
 };
 
+const connectWebSocket = () => {
+    state.ws = new WebSocket(process.env.WEBSOCKET_URL);
+    state.ws.on('open', () => {
+        console.log('WebSocket conectado');
+        state.ws.send(JSON.stringify({ type: 'auth', apiKey: process.env.API_KEY }));
+    });
+    state.ws.on('message', handleMessage);
+    state.ws.on('close', () => {
+        console.log('WebSocket desconectado - reconectando em 3s...');
+        setTimeout(connectWebSocket, 3000);
+    });
+    state.ws.on('error', (error) => console.error('Erro WebSocket:', error.message));
+};
+
+const reconnectSQL = async () => {
+    if (state.reconnecting) return;
+    state.reconnecting = true;
+    console.log('Reconectando SQL Server...');
+    try {
+        await state.pool?.close();
+        state.pool = await sql.connect(sqlConfig);
+        console.log('SQL Server reconectado');
+    } catch (error) {
+        console.error('Erro na reconexão SQL:', error.message);
+        setTimeout(reconnectSQL, 5000);
+        return;
+    }
+    state.reconnecting = false;
+};
+
 const initClient = async () => {
     try {
         state.pool = await sql.connect(sqlConfig);
         console.log('Conectado ao SQL Server');
-
-        state.ws = new WebSocket(process.env.WEBSOCKET_URL);
-        state.ws.on('open', () => {
-            console.log('WebSocket conectado');
-            state.ws.send(JSON.stringify({ type: 'auth', apiKey: process.env.API_KEY }));
-        });
-        state.ws.on('message', handleMessage);
-        state.ws.on('close', () => console.log('WebSocket desconectado'));
-        state.ws.on('error', (error) => console.error('Erro WebSocket:', error.message));
+        connectWebSocket();
     } catch (error) {
         console.error('Erro inicializando:', error.message);
-        process.exit(1);
+        setTimeout(initClient, 5000);
     }
 };
 
